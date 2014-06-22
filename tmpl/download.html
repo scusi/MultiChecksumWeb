@@ -1,0 +1,11 @@
+<html>
+ <head>
+  <title>download a file</title>
+ </head>
+ <body>
+  <h1>MD5 Sum of {{.Name}}</h1>
+  Type: {{.ContentType}}<br/>
+  Name: {{.Name}}<br/>
+  MD5 Sum: {{printf "%x" .MD5}}
+ </body>
+</html>
