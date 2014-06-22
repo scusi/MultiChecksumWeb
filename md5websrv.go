@@ -14,6 +14,7 @@ import(
     "net/http/httputil"
     "io/ioutil"
     "crypto/md5"
+    _ "expvar"
 )
 
 // define a FileObject
@@ -27,17 +28,19 @@ type file struct {
 // constants and variables:
 var templates = template.Must(template.ParseFiles("tmpl/upload.html", "tmpl/download.html"))
 
+// shows the upload form
 func upHandler(w http.ResponseWriter, r *http.Request) {
     t, _ := template.ParseFiles("tmpl/upload.html")
     p := ""
     t.Execute(w, p)
 }
 
+// takes upload request and processes it
 func doHandler(w http.ResponseWriter, r *http.Request) {
     // get multipart-file from request
     mpf, mpHeader, err := r.FormFile("file")
     if err != nil {
-        log.Fatal(err)
+        http.Error(w, err.Error(), http.StatusInternalServerError)
     }
     // read-in uploaded file
     slurp, err := ioutil.ReadAll(mpf)
@@ -53,6 +56,7 @@ func doHandler(w http.ResponseWriter, r *http.Request) {
     t.Execute(w, myFileObj)
 }
 
+// dump the incoming request
 func reqDumper(w http.ResponseWriter, r *http.Request) {
     dumpedReq, err := httputil.DumpRequest(r, true)
     if err != nil {
