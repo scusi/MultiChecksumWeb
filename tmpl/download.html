@@ -1,11 +1,15 @@
 <html>
  <head>
-  <title>download a file</title>
+  <title>MD5 of {{.Name}}</title>
  </head>
  <body>
   <h1>MD5 Sum of {{.Name}}</h1>
   Type: {{.ContentType}}<br/>
   Name: {{.Name}}<br/>
-  MD5 Sum: {{printf "%x" .MD5}}
+  Size: {{.Size}} byte<br/>
+  MD5 Sum:    <strong>{{printf "%x" .MD5}}</strong><br/>
+  SHA1 Sum:   <strong>{{printf "%x" .SHA1}}</strong><br/>
+  SHA224 Sum: <strong>{{printf "%x" .SHA224}}</strong><br/>
+  SHA256 Sum: <strong>{{printf "%x" .SHA256}}</strong><br/>
  </body>
 </html>
