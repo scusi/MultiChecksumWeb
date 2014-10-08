@@ -19,6 +19,8 @@ import (
 	"log"
 	"net/http"
 	"net/http/httputil"
+	"net"
+	"os"
 )
 
 // define a FileObject
@@ -35,8 +37,8 @@ type file struct {
 }
 
 // constants and variables:
-var template_base_path = "/go/src/github.com/scusi/Md5Webserver/"
-//var template_base_path = ""
+//var template_base_path = "/go/src/github.com/scusi/Md5Webserver/"
+var template_base_path = "/"
 var templates = template.Must(template.ParseFiles(template_base_path+"tmpl/upload.html", template_base_path+"tmpl/download.html"))
 
 // shows the upload form
@@ -100,10 +102,12 @@ func reqDumper(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	hostPort := net.JoinHostPort("0.0.0.0", os.Getenv("PORT"))
 	http.HandleFunc("/", upHandler)
 	http.HandleFunc("/up/", upHandler)
 	http.HandleFunc("/do/", doHandler)
 	http.HandleFunc("/dump/", reqDumper)
-	//http.ListenAndServe(":9090", nil)
-	http.ListenAndServe(":80", nil)
+	if err := http.ListenAndServe(hostPort, nil); err != nil {
+		log.Fatal("ListenAndServe: ", err)
+	}
 }
