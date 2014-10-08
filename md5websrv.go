@@ -13,6 +13,7 @@ import (
 	_ "expvar"
 	"fmt"
 	"html/template"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -25,10 +26,10 @@ type file struct {
 	ContentType string
 	Size        int64
 	Content     []byte
-	MD5         [16]byte
-	SHA1        [20]byte
-	SHA224      [28]byte
-	SHA256      [32]byte
+	MD5         []byte  // [16]byte
+	SHA1        []byte  // [20]byte
+	SHA224      []byte  // [28]byte
+	SHA256      []byte  // [32]byte
 }
 
 // constants and variables:
@@ -53,11 +54,19 @@ func doHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-	// get md5sum of uploaded file
-	md5sum := md5.Sum(slurp)
-	shasum := sha1.Sum(slurp)
-	sha224sum := sha256.Sum224(slurp)
-	sha256sum := sha256.Sum256(slurp)
+	// create new Checksum handles
+	md5 := md5.New()
+	sha1 := sha1.New()
+	sha224 := sha256.New224()
+	sha256 := sha256.New()
+	// create a MultiWriter to write to all handles at once
+	mw := io.MultiWriter(md5, sha1, sha224, sha256)
+    mw.Write(slurp)
+	// get checksums of uploaded file
+	md5sum := md5.Sum(nil)
+	shasum := sha1.Sum(nil)
+	sha224sum := sha224.Sum(nil)
+	sha256sum := sha256.Sum(nil)
 	// parse uploaded data into my FileObject
 	myFileObj := file{mpHeader.Filename, // filename
 		mpHeader.Header.Get("Content-Type"), // Content-Type
@@ -66,7 +75,8 @@ func doHandler(w http.ResponseWriter, r *http.Request) {
 		md5sum,                              // md5sum of file content
 		shasum,                              // sha1sum of file content
 		sha224sum,                           // sha224sum
-		sha256sum}                           // sha256sum
+		sha256sum,                           // sha256sum
+	}
 	// Parse and execute template with my FileObject
 	t, _ := template.ParseFiles("tmpl/download.html")
 	t.Execute(w, myFileObj)
