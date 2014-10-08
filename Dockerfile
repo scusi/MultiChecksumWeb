@@ -14,4 +14,4 @@ RUN go install github.com/scusi/Md5Webserver
 ENTRYPOINT /go/bin/Md5Webserver
 
 # Document that the service listens on port 8080.
-EXPOSE 8080
+EXPOSE 80
