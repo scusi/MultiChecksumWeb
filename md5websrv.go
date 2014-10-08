@@ -10,6 +10,7 @@ import (
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
+	"crypto/sha512"
 	_ "expvar"
 	"fmt"
 	"html/template"
@@ -30,14 +31,17 @@ type file struct {
 	SHA1        []byte  // [20]byte
 	SHA224      []byte  // [28]byte
 	SHA256      []byte  // [32]byte
+	SHA512	    []byte  // [64]byte
 }
 
 // constants and variables:
-var templates = template.Must(template.ParseFiles("tmpl/upload.html", "tmpl/download.html"))
+var template_base_path = "/go/src/github.com/scusi/Md5Webserver/"
+//var template_base_path = ""
+var templates = template.Must(template.ParseFiles(template_base_path+"tmpl/upload.html", template_base_path+"tmpl/download.html"))
 
 // shows the upload form
 func upHandler(w http.ResponseWriter, r *http.Request) {
-	t, _ := template.ParseFiles("tmpl/upload.html")
+	t, _ := template.ParseFiles(template_base_path+"tmpl/upload.html")
 	p := ""
 	t.Execute(w, p)
 }
@@ -59,14 +63,16 @@ func doHandler(w http.ResponseWriter, r *http.Request) {
 	sha1 := sha1.New()
 	sha224 := sha256.New224()
 	sha256 := sha256.New()
+	sha512 := sha512.New()
 	// create a MultiWriter to write to all handles at once
-	mw := io.MultiWriter(md5, sha1, sha224, sha256)
-    mw.Write(slurp)
+	mw := io.MultiWriter(md5, sha1, sha224, sha256, sha512)
+	mw.Write(slurp)
 	// get checksums of uploaded file
 	md5sum := md5.Sum(nil)
 	shasum := sha1.Sum(nil)
 	sha224sum := sha224.Sum(nil)
 	sha256sum := sha256.Sum(nil)
+	sha512sum := sha512.Sum(nil)
 	// parse uploaded data into my FileObject
 	myFileObj := file{mpHeader.Filename, // filename
 		mpHeader.Header.Get("Content-Type"), // Content-Type
@@ -76,9 +82,10 @@ func doHandler(w http.ResponseWriter, r *http.Request) {
 		shasum,                              // sha1sum of file content
 		sha224sum,                           // sha224sum
 		sha256sum,                           // sha256sum
+		sha512sum,			     // sha512sum 
 	}
 	// Parse and execute template with my FileObject
-	t, _ := template.ParseFiles("tmpl/download.html")
+	t, _ := template.ParseFiles(template_base_path+"tmpl/download.html")
 	t.Execute(w, myFileObj)
 }
 
