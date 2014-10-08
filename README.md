@@ -1,15 +1,18 @@
 # README
 
-MultiChecksumWeb is a Webapplication variabt of MultiChecksum optimized for docker
+MultiChecksumWeb is a Webapplication variant of [MultiChecksum](https://github.com/scusi/MultiChecksum) optimized for useing with [docker](http://docker.com) containers
 
 ## Download
 
  git clone https://github.com/scusi/MultiChecksumWeb.git
 
-## Building
+## Building a binary
 
  cd MultiChecksumWeb.git
  CGO_ENABLED=0 GOOS=linux go build -a -tags netgo -ldflags '-w' .
+
+## building a docker image
+
  docker build -t yourname/multichecksumweb
 
 ## Running docker container
