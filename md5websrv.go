@@ -104,5 +104,6 @@ func main() {
 	http.HandleFunc("/up/", upHandler)
 	http.HandleFunc("/do/", doHandler)
 	http.HandleFunc("/dump/", reqDumper)
-	http.ListenAndServe(":9090", nil)
+	//http.ListenAndServe(":9090", nil)
+	http.ListenAndServe(":80", nil)
 }
