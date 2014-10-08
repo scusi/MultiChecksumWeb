@@ -4,19 +4,19 @@ MultiChecksumWeb is a Webapplication variant of [MultiChecksum](https://github.c
 
 ## Download
 
- git clone https://github.com/scusi/MultiChecksumWeb.git
+	git clone https://github.com/scusi/MultiChecksumWeb.git
 
 ## Building a binary
 
- cd MultiChecksumWeb.git
- CGO_ENABLED=0 GOOS=linux go build -a -tags netgo -ldflags '-w' .
+ 	cd MultiChecksumWeb.git
+ 	CGO_ENABLED=0 GOOS=linux go build -a -tags netgo -ldflags '-w' .
 
 ## building a docker image
 
- docker build -t yourname/multichecksumweb
+ 	docker build -t yourname/multichecksumweb
 
 ## Running docker container
 
- docker run --publish 80:80 yourname/multichecksumweb
+ 	docker run --publish 80:80 yourname/multichecksumweb
 
 Point your browser to http://127.0.0.1/
