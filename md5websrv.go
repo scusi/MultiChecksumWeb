@@ -25,19 +25,18 @@ import (
 
 // define a FileObject
 type file struct {
-	Name        string
-	ContentType string
-	Size        int64
-	Content     []byte
-	MD5         []byte  // [16]byte
-	SHA1        []byte  // [20]byte
-	SHA224      []byte  // [28]byte
-	SHA256      []byte  // [32]byte
-	SHA512	    []byte  // [64]byte
+	Name        string  // name of file
+	ContentType string  // content-type
+	Size        int64   // size in bytes
+	Content     []byte  // file content
+	MD5         []byte  // [16]byte md5 sum
+	SHA1        []byte  // [20]byte sha1 sum
+	SHA224      []byte  // [28]byte sha224 sum
+	SHA256      []byte  // [32]byte sha256 sum
+	SHA512	    []byte  // [64]byte sha512 sum
 }
 
 // constants and variables:
-//var template_base_path = "/go/src/github.com/scusi/Md5Webserver/"
 var template_base_path = "/"
 var templates = template.Must(template.ParseFiles(template_base_path+"tmpl/upload.html", template_base_path+"tmpl/download.html"))
 
@@ -76,7 +75,7 @@ func doHandler(w http.ResponseWriter, r *http.Request) {
 	sha256sum := sha256.Sum(nil)
 	sha512sum := sha512.Sum(nil)
 	// parse uploaded data into my FileObject
-	myFileObj := file{mpHeader.Filename, // filename
+	myFileObj := file{mpHeader.Filename,     // filename
 		mpHeader.Header.Get("Content-Type"), // Content-Type
 		int64(len(slurp)),                   // size of file in bytes
 		slurp,                               // file content
@@ -84,7 +83,7 @@ func doHandler(w http.ResponseWriter, r *http.Request) {
 		shasum,                              // sha1sum of file content
 		sha224sum,                           // sha224sum
 		sha256sum,                           // sha256sum
-		sha512sum,			     // sha512sum 
+		sha512sum,			                 // sha512sum 
 	}
 	// Parse and execute template with my FileObject
 	t, _ := template.ParseFiles(template_base_path+"tmpl/download.html")
