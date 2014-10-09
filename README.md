@@ -7,7 +7,7 @@ MultiChecksumWeb is a Webapplication variant of [MultiChecksum](https://github.c
 If you have and use docker already you can just download the image and run it.
 
     docker pull scusi/multichecksumweb
-    docker run --publish 80:80 scusi/multichecksumweb
+    docker run --publish 80:80 -d scusi/multichecksumweb
 
 Point your browser to your _docker_ip_
 
@@ -22,17 +22,17 @@ Point your browser to your _docker_ip_
 This step can be ommited since a binary is shipped with the source. 
 However if you want to build a binary to use in the docker image do the following:
 
- 	cd MultiChecksumWeb.git
+ 	cd MultiChecksumWeb
  	CGO_ENABLED=0 GOOS=linux go build -a -tags netgo -ldflags '-w' .
 
 ### building a docker image
 
 With the binary (from the above step) and a Dockerfile you can build your own docker image like this:
 
- 	docker build -t yourname/multichecksumweb
+ 	docker build -t yourname/multichecksumweb .
 
 ### Running your docker container
 
- 	docker run --publish 80:80 yourname/multichecksumweb
+ 	docker run --publish 80:80 -d yourname/multichecksumweb
 
 Point your browser to http://127.0.0.1/
