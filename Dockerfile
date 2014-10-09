@@ -15,7 +15,7 @@ ADD tmpl /tmpl
 # This is the app we gonna start when the image is started
 ENTRYPOINT /Md5Webserver
 
-# set environment variable 'PORT' used by Md4Webserver binary as port to bind to.
+# set environment variable 'PORT' used by Md5Webserver binary as port to bind to.
 ENV PORT 80
 
 # expose port 80 to the outside world from the docker image
