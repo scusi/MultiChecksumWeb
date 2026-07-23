@@ -260,7 +260,7 @@
                 <div class="value">{{.ContentType}}</div>
 
                 <div class="label">Größe:</div>
-                <div class="value">{{.Size}} Bytes ({{printf "%.2f" (divf .Size 1024.0)}} KB / {{printf "%.2f" (divf .Size 1048576.0)}} MB)</div>
+                <div class="value">{{.Size}} Bytes ({{printf "%.2f" (divf (float64 .Size) 1024.0)}} KB / {{printf "%.2f" (divf (float64 .Size) 1048576.0)}} MB)</div>
             </div>
         </div>
 
