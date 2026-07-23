@@ -29,6 +29,9 @@ COPY --from=builder /app/tmpl /tmpl
 # Set environment variable for port
 ENV PORT=80
 
+# Set environment variable for template directory
+ENV TEMPLATE_DIR=/tmpl/
+
 # Expose port 80
 EXPOSE 80
 
