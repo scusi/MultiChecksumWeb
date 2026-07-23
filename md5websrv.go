@@ -7,6 +7,7 @@
 package main
 
 import (
+	"context"
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
@@ -19,6 +20,9 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 	"sync"
 	"time"
 
@@ -40,6 +44,7 @@ type file struct {
 // constants and variables:
 const (
 	maxUploadSize = 100 << 20 // 100 MB
+	shutdownTimeout = 5 * time.Second
 	rateLimit     = 10         // requests per minute per IP
 	rateBurst     = 10         // max burst size
 )
@@ -228,6 +233,35 @@ func main() {
 	}
 	hostPort := fmt.Sprintf("0.0.0.0:%s", port)
 
+	http.HandleFunc("/", upHandler)
+	http.HandleFunc("/up/", upHandler)
+	http.HandleFunc("/do/", doHandler)
+	http.HandleFunc("/health", healthHandler)
+
+	server := &http.Server{
+		Addr:    hostPort,
+		Handler: http.DefaultServeMux,
+	}
+
+	// Signal channel for graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
+
+	go func() {
+		<-sigChan
+		log.Printf("Shutting down server gracefully...")
+		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
+		if err := server.Shutdown(ctx); err != nil {
+			log.Printf("Server shutdown error: %v", err)
+		}
+	}()
+
+	log.Printf("Starting MultiChecksumWeb on %s", hostPort)
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Fatal("ListenAndServe: ", err)
+	}
+	log.Printf("Server stopped")
 	// Initialize cleanup time
 	cleanupAt = time.Now().Add(10 * time.Minute)
 
