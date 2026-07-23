@@ -1,14 +1,420 @@
-<html>
- <head>
-  <title>MultiChecksum</title>
- </head>
- <body>
-  <h1>MultiChecksum</h1>
-   <p>Lade eine Datei hoch und bekomme die MD5, SHA-1, SHA-224, SHA-256 und die SHA-512 Prüfsumme angezeigt.<p><br/>
-   <form action="/do/" method="post" enctype="multipart/form-data">
-    <input type="file" name="file">
-    <input type="submit" value="upload and show checksums">
-   </form>
-   <p>Hoch geladenen Dateien werden nicht gespeichert, ja noch nicht mal temporär in ein Dateisystem geschrieben. Dateiinhalte befinden sich ausschließlich im Arbeitsspeicher und werden nach dem erstellen der Prüfsummen gelöscht.</p>
- </body>
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MultiChecksum - Datei Pr&uuml;fsummen Generator</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2980b9;
+            --background-color: #f5f7fa;
+            --card-color: #ffffff;
+            --text-color: #333333;
+            --light-text: #777777;
+            --success-color: #2ecc71;
+            --error-color: #e74c3c;
+            --border-radius: 8px;
+            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-color);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+
+        .subtitle {
+            color: var(--light-text);
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+
+        .upload-area {
+            border: 3px dashed var(--primary-color);
+            border-radius: var(--border-radius);
+            padding: 50px;
+            margin: 20px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: rgba(52, 152, 219, 0.05);
+        }
+
+        .upload-area:hover {
+            border-color: var(--secondary-color);
+            background-color: rgba(52, 152, 219, 0.1);
+        }
+
+        .upload-area.drag-over {
+            border-color: var(--success-color);
+            background-color: rgba(46, 204, 113, 0.1);
+        }
+
+        .upload-area .icon {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+
+        .upload-area .text {
+            color: var(--light-text);
+            font-size: 1.1rem;
+        }
+
+        .upload-area .text strong {
+            color: var(--primary-color);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1rem;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-weight: 600;
+        }
+
+        .btn:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .file-info {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: rgba(52, 152, 219, 0.1);
+            border-radius: var(--border-radius);
+            display: none;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        .file-info .filename {
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+
+        .file-info .filesize {
+            color: var(--light-text);
+            font-size: 0.9rem;
+        }
+
+        .progress-container {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .progress-container.show {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar .progress {
+            height: 100%;
+            background-color: var(--primary-color);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            margin-top: 8px;
+            color: var(--light-text);
+            font-size: 0.9rem;
+        }
+
+        .features {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .features h3 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+
+        .features ul {
+            list-style: none;
+            text-align: left;
+            display: inline-block;
+        }
+
+        .features li {
+            padding: 5px 0;
+            color: var(--light-text);
+        }
+
+        .features li:before {
+            content: "✓ ";
+            color: var(--success-color);
+            font-weight: bold;
+        }
+
+        .privacy-notice {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: rgba(231, 76, 60, 0.05);
+            border-radius: var(--border-radius);
+            font-size: 0.9rem;
+            color: var(--light-text);
+            text-align: left;
+        }
+
+        .privacy-notice strong {
+            color: var(--error-color);
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .upload-area {
+                padding: 30px;
+            }
+
+            .upload-area .icon {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MultiChecksum</h1>
+        <p class="subtitle">Ziehen Sie eine Datei hierher oder klicken Sie zum Ausw&auml;hlen</p>
+
+        <form id="uploadForm" action="/do/" method="post" enctype="multipart/form-data">
+            <div class="upload-area" id="dropArea">
+                <div class="icon">📁</div>
+                <div class="text">
+                    <strong>Datei hier ablegen</strong> oder klicken zum Auswählen
+                </div>
+                <input type="file" name="file" id="fileInput" class="file-input" accept="*">
+            </div>
+            <div class="file-info" id="fileInfo">
+                <div class="filename" id="filename"></div>
+                <div class="filesize" id="filesize"></div>
+            </div>
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar">
+                    <div class="progress" id="progressBar"></div>
+                </div>
+                <div class="progress-text" id="progressText">0%</div>
+            </div>
+            <button type="submit" class="btn" id="uploadBtn" disabled>Pr&uuml;fsummen berechnen</button>
+        </form>
+
+        <div class="features">
+            <h3>Unterst&uuml;tzte Pr&uuml;fsummen</h3>
+            <ul>
+                <li>MD5 (128-bit)</li>
+                <li>SHA-1 (160-bit)</li>
+                <li>SHA-224 (224-bit)</li>
+                <li>SHA-256 (256-bit)</li>
+                <li>SHA-512 (512-bit)</li>
+            </ul>
+        </div>
+
+        <div class="privacy-notice">
+            <strong>Datenschutz:</strong> Hochgeladene Dateien werden nicht gespeichert, nicht auf die Festplatte geschrieben und nach der Berechnung der Pr&uuml;fsummen sofort aus dem Arbeitsspeicher gel&ouml;scht.
+        </div>
+    </div>
+
+    <script>
+        const dropArea = document.getElementById('dropArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const filename = document.getElementById('filename');
+        const filesize = document.getElementById('filesize');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const uploadForm = document.getElementById('uploadForm');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+
+        let selectedFile = null;
+
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // Highlight drop area when item is dragged over it
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight() {
+            dropArea.classList.add('drag-over');
+        }
+
+        function unhighlight() {
+            dropArea.classList.remove('drag-over');
+        }
+
+        // Handle dropped files
+        dropArea.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }
+
+        // Handle file selection via click
+        dropArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                handleFiles(fileInput.files);
+            }
+        });
+
+        function handleFiles(files) {
+            if (files.length === 0) return;
+
+            selectedFile = files[0];
+            filename.textContent = selectedFile.name;
+            filesize.textContent = formatFileSize(selectedFile.size);
+            fileInfo.classList.add('show');
+            uploadBtn.disabled = false;
+
+            // For browsers that support progress events
+            if (selectedFile.size > 0) {
+                uploadForm.addEventListener('submit', startUpload);
+            }
+        }
+
+        function startUpload(e) {
+            if (!selectedFile) {
+                e.preventDefault();
+                return;
+            }
+
+            progressContainer.classList.add('show');
+            uploadBtn.disabled = true;
+
+            // For modern browsers with XMLHttpRequest2
+            if (window.XMLHttpRequest && new XMLHttpRequest().upload) {
+                e.preventDefault();
+                uploadWithXHR(selectedFile);
+            }
+        }
+
+        function uploadWithXHR(file) {
+            const xhr = new XMLHttpRequest();
+            const formData = new FormData();
+            formData.append('file', file);
+
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const percent = Math.round((e.loaded / e.total) * 100);
+                    progressBar.style.width = percent + '%';
+                    progressText.textContent = percent + '%';
+                }
+            });
+
+            xhr.addEventListener('load', () => {
+                if (xhr.status === 200) {
+                    // Redirect to results page
+                    window.location.href = '/do/?file=' + encodeURIComponent(file.name);
+                } else {
+                    alert('Fehler beim Hochladen: ' + xhr.statusText);
+                    resetUpload();
+                }
+            });
+
+            xhr.addEventListener('error', () => {
+                alert('Fehler beim Hochladen');
+                resetUpload();
+            });
+
+            xhr.open('POST', '/do/', true);
+            xhr.send(formData);
+        }
+
+        function resetUpload() {
+            progressContainer.classList.remove('show');
+            progressBar.style.width = '0%';
+            progressText.textContent = '0%';
+            uploadBtn.disabled = false;
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+    </script>
+</body>
 </html>

@@ -1,8 +1,8 @@
 // md5websrv.go - webservice to upload file and show MD5 Sum of it.
 //
-//  go build md5websrv.go
-//  ./md5websrv
-//  go to http://localhost:9090/up/
+//  go build -ldflags '-w -s' -o MultiChecksumWeb .
+//  ./MultiChecksumWeb
+//  go to http://localhost:8080/
 //
 package main
 
@@ -11,101 +11,130 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
-	_ "expvar"
 	"fmt"
+	"html"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
-	"net/http/httputil"
-	"net"
 	"os"
 )
 
 // define a FileObject
 type file struct {
-	Name        string  // name of file
-	ContentType string  // content-type
-	Size        int64   // size in bytes
-	Content     []byte  // file content
-	MD5         []byte  // [16]byte md5 sum
-	SHA1        []byte  // [20]byte sha1 sum
-	SHA224      []byte  // [28]byte sha224 sum
-	SHA256      []byte  // [32]byte sha256 sum
-	SHA512	    []byte  // [64]byte sha512 sum
+	Name        string // name of file
+	ContentType string // content-type
+	Size        int64  // size in bytes
+	MD5         []byte // [16]byte md5 sum
+	SHA1        []byte // [20]byte sha1 sum
+	SHA224      []byte // [28]byte sha224 sum
+	SHA256      []byte // [32]byte sha256 sum
+	SHA512      []byte // [64]byte sha512 sum
 }
 
 // constants and variables:
-var template_base_path = "/"
-var templates = template.Must(template.ParseFiles(template_base_path+"tmpl/upload.html", template_base_path+"tmpl/download.html"))
+const (
+	maxUploadSize = 100 << 20 // 100 MB
+	templateDir   = "/tmpl/"
+)
+
+var templates = template.Must(template.ParseGlob(templateDir + "*"))
 
 // shows the upload form
 func upHandler(w http.ResponseWriter, r *http.Request) {
-	t, _ := template.ParseFiles(template_base_path+"tmpl/upload.html")
-	p := ""
-	t.Execute(w, p)
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := templates.ExecuteTemplate(w, "upload.html", nil); err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		log.Printf("Error executing template: %v", err)
+	}
 }
 
 // takes upload request and processes it
 func doHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Limit upload size
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+
 	// get multipart-file from request
 	mpf, mpHeader, err := r.FormFile("file")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Error retrieving file: "+err.Error(), http.StatusBadRequest)
+		return
 	}
-	// read-in uploaded file
-	slurp, err := ioutil.ReadAll(mpf)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	defer mpf.Close()
+
 	// create new Checksum handles
 	md5 := md5.New()
 	sha1 := sha1.New()
 	sha224 := sha256.New224()
 	sha256 := sha256.New()
 	sha512 := sha512.New()
+
 	// create a MultiWriter to write to all handles at once
 	mw := io.MultiWriter(md5, sha1, sha224, sha256, sha512)
-	mw.Write(slurp)
-	// get checksums of uploaded file
+
+	// stream the file directly to hash writers
+	size, err := io.Copy(mw, mpf)
+	if err != nil {
+		http.Error(w, "Error reading file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// get checksums
 	md5sum := md5.Sum(nil)
 	shasum := sha1.Sum(nil)
 	sha224sum := sha224.Sum(nil)
 	sha256sum := sha256.Sum(nil)
 	sha512sum := sha512.Sum(nil)
+
 	// parse uploaded data into my FileObject
-	myFileObj := file{mpHeader.Filename,     // filename
-		mpHeader.Header.Get("Content-Type"), // Content-Type
-		int64(len(slurp)),                   // size of file in bytes
-		slurp,                               // file content
-		md5sum,                              // md5sum of file content
-		shasum,                              // sha1sum of file content
-		sha224sum,                           // sha224sum
-		sha256sum,                           // sha256sum
-		sha512sum,			                 // sha512sum 
+	myFileObj := file{
+		Name:        html.EscapeString(mpHeader.Filename), // XSS protection
+		ContentType: html.EscapeString(mpHeader.Header.Get("Content-Type")),
+		Size:        size,
+		MD5:         md5sum,
+		SHA1:        shasum,
+		SHA224:      sha224sum,
+		SHA256:      sha256sum,
+		SHA512:      sha512sum,
 	}
-	// Parse and execute template with my FileObject
-	t, _ := template.ParseFiles(template_base_path+"tmpl/download.html")
-	t.Execute(w, myFileObj)
+
+	// Execute template
+	if err := templates.ExecuteTemplate(w, "download.html", myFileObj); err != nil {
+		http.Error(w, "Error rendering page: "+err.Error(), http.StatusInternalServerError)
+		log.Printf("Error executing template: %v", err)
+	}
 }
 
-// dump the incoming request
-func reqDumper(w http.ResponseWriter, r *http.Request) {
-	dumpedReq, err := httputil.DumpRequest(r, true)
-	if err != nil {
-		log.Fatal("httputil.DumpRequestOut:", err)
-	}
-	log.Printf("%s\n", dumpedReq)
-	fmt.Fprintf(w, "%s", dumpedReq)
+// health check endpoint
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
 }
 
 func main() {
-	hostPort := net.JoinHostPort("0.0.0.0", os.Getenv("PORT"))
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	hostPort := fmt.Sprintf("0.0.0.0:%s", port)
+
 	http.HandleFunc("/", upHandler)
-	http.HandleFunc("/up/", upHandler)
 	http.HandleFunc("/do/", doHandler)
-	http.HandleFunc("/dump/", reqDumper)
+	http.HandleFunc("/health", healthHandler)
+
+	log.Printf("Starting MultiChecksumWeb on %s", hostPort)
 	if err := http.ListenAndServe(hostPort, nil); err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
