@@ -14,6 +14,9 @@ COPY md5websrv.go .
 COPY go.mod .
 COPY tmpl ./tmpl
 
+# Download dependencies
+RUN go mod download
+
 # Build the application statically
 RUN go build -ldflags '-w -s' -o /MultiChecksumWeb .
 

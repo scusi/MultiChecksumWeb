@@ -1,0 +1,20 @@
+# Ignore the pre-built binary to avoid conflicts
+MultiChecksumWeb
+
+# Ignore git directory
+.git
+
+# Ignore IDE files
+.idea
+.vscode
+*.swp
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore log files
+*.log
+
+# Ignore go.sum and go.mod.local if they exist
+go.sum
