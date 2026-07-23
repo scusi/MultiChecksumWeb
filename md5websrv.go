@@ -1,9 +1,8 @@
 // md5websrv.go - webservice to upload file and show MD5 Sum of it.
 //
-//  go build -ldflags '-w -s' -o MultiChecksumWeb .
-//  ./MultiChecksumWeb
-//  go to http://localhost:8080/
-//
+//	go build -ldflags '-w -s' -o MultiChecksumWeb .
+//	./MultiChecksumWeb
+//	go to http://localhost:8080/
 package main
 
 import (
@@ -21,8 +20,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"syscall"
 	"sync"
+	"syscall"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -42,10 +41,10 @@ type file struct {
 
 // constants and variables:
 const (
-	maxUploadSize = 100 << 20 // 100 MB
+	maxUploadSize   = 100 << 20 // 100 MB
 	shutdownTimeout = 5 * time.Second
-	rateLimit     = 10         // requests per minute per IP
-	rateBurst     = 10         // max burst size
+	rateLimit       = 10 // requests per minute per IP
+	rateBurst       = 10 // max burst size
 )
 
 // Rate limiter per IP
@@ -56,8 +55,11 @@ var (
 
 // Custom template functions
 var templateDir = os.Getenv("TEMPLATE_DIR")
-if templateDir == "" {
-	templateDir = "/tmpl/"
+
+func init() {
+	if templateDir == "" {
+		templateDir = "/tmpl/"
+	}
 }
 
 var funcMap = template.FuncMap{
