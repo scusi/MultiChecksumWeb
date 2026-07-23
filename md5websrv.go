@@ -18,6 +18,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 )
 
 // define a FileObject
@@ -170,7 +171,12 @@ func main() {
 	http.HandleFunc("/health", healthHandler)
 
 	log.Printf("Starting MultiChecksumWeb on %s", hostPort)
-	if err := http.ListenAndServe(hostPort, nil); err != nil {
-		log.Fatal("ListenAndServe: ", err)
+	server := &http.Server{
+		Addr:         hostPort,
+		Handler:      nil,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
+	log.Fatal(server.ListenAndServe())
 }
