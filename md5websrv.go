@@ -19,7 +19,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
 	"time"
+
+	"golang.org/x/time/rate"
 )
 
 // define a FileObject
@@ -37,6 +40,14 @@ type file struct {
 // constants and variables:
 const (
 	maxUploadSize = 100 << 20 // 100 MB
+	rateLimit     = 10         // requests per minute per IP
+	rateBurst     = 10         // max burst size
+)
+
+// Rate limiter per IP
+var (
+	limiters  sync.Map // map[string]*rate.Limiter
+	cleanupAt time.Time
 )
 
 // Custom template functions
@@ -58,6 +69,43 @@ var funcMap = template.FuncMap{
 }
 
 var templates = template.Must(template.New("").Funcs(funcMap).ParseGlob(templateDir + "*"))
+
+// getLimiter returns a rate limiter for the given IP address
+func getLimiter(ip string) *rate.Limiter {
+	// Clean up old limiters periodically
+	if time.Now().After(cleanupAt) {
+		cleanupAt = time.Now().Add(10 * time.Minute)
+		limiters.Range(func(key, value interface{}) bool {
+			limiters.Delete(key)
+			return true
+		})
+	}
+
+	limiter, exists := limiters.Load(ip)
+	if !exists {
+		// Create new limiter: 10 requests per minute, burst of 10
+		l := rate.NewLimiter(rate.Limit(rateLimit/60.0), rateBurst)
+		limiters.Store(ip, l)
+		return l
+	}
+	return limiter.(*rate.Limiter)
+}
+
+// rateLimitMiddleware applies rate limiting per IP
+func rateLimitMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ip := r.RemoteAddr
+		limiter := getLimiter(ip)
+
+		if !limiter.Allow() {
+			w.Header().Set("Retry-After", fmt.Sprintf("%.0f", 60.0/rateLimit))
+			http.Error(w, "Too many requests. Please try again later.", http.StatusTooManyRequests)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	}
+}
 
 // shows the upload form
 func upHandler(w http.ResponseWriter, r *http.Request) {
@@ -176,18 +224,23 @@ func main() {
 	}
 	hostPort := fmt.Sprintf("0.0.0.0:%s", port)
 
-	http.HandleFunc("/", upHandler)
-	http.HandleFunc("/up/", upHandler)
-	http.HandleFunc("/do/", doHandler)
-	http.HandleFunc("/health", healthHandler)
+	// Initialize cleanup time
+	cleanupAt = time.Now().Add(10 * time.Minute)
 
-	log.Printf("Starting MultiChecksumWeb on %s", hostPort)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", rateLimitMiddleware(upHandler))
+	mux.HandleFunc("/up/", rateLimitMiddleware(upHandler))
+	mux.HandleFunc("/do/", rateLimitMiddleware(doHandler))
+	mux.HandleFunc("/health", healthHandler) // health check without rate limiting
+
 	server := &http.Server{
 		Addr:         hostPort,
-		Handler:      nil,
+		Handler:      mux,
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
+
+	log.Printf("Starting MultiChecksumWeb on %s (rate limited to %d req/min per IP)", hostPort, rateLimit)
 	log.Fatal(server.ListenAndServe())
 }
