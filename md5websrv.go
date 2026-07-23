@@ -11,6 +11,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
+	"errors"
 	"fmt"
 	"html"
 	"html/template"
@@ -29,7 +30,7 @@ type file struct {
 	SHA1        []byte // [20]byte sha1 sum
 	SHA224      []byte // [28]byte sha224 sum
 	SHA256      []byte // [32]byte sha256 sum
-	SHA512      []byte // [64]byte sha512 sum
+	SHA512      []byte // [64]byte sha521 sum
 }
 
 // constants and variables:
@@ -98,7 +99,16 @@ func doHandler(w http.ResponseWriter, r *http.Request) {
 	// get multipart-file from request
 	mpf, mpHeader, err := r.FormFile("file")
 	if err != nil {
-		http.Error(w, "Error retrieving file: "+err.Error(), http.StatusBadRequest)
+		// Differenziertes Error Handling
+		if errors.Is(err, http.ErrMissingFile) {
+			http.Error(w, "No file provided", http.StatusBadRequest)
+		} else if errors.Is(err, http.ErrNotMultipart) {
+			http.Error(w, "Request must be multipart/form-data", http.StatusBadRequest)
+		} else if errors.Is(err, http.ErrBodyTooLarge) {
+			http.Error(w, "File too large (max 100MB)", http.StatusPayloadTooLarge)
+		} else {
+			http.Error(w, "Error retrieving file", http.StatusInternalServerError)
+		}
 		return
 	}
 	defer mpf.Close()
