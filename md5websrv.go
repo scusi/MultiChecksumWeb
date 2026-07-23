@@ -16,6 +16,7 @@ import (
 	"html"
 	"html/template"
 	"io"
+	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -160,8 +161,8 @@ func doHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "No file provided", http.StatusBadRequest)
 		} else if errors.Is(err, http.ErrNotMultipart) {
 			http.Error(w, "Request must be multipart/form-data", http.StatusBadRequest)
-		} else if errors.Is(err, http.ErrBodyTooLarge) {
-			http.Error(w, "File too large (max 100MB)", http.StatusPayloadTooLarge)
+		} else if err.Error() == "http: request body too large" {
+			http.Error(w, "File too large (max 100MB)", http.StatusRequestEntityTooLarge)
 		} else {
 			http.Error(w, "Error retrieving file", http.StatusInternalServerError)
 		}
@@ -212,8 +213,8 @@ func doHandler(w http.ResponseWriter, r *http.Request) {
 	// Execute template
 	if err := templates.ExecuteTemplate(w, "download.html", myFileObj); err != nil {
 		slog.Error("template execution failed", "handler", "doHandler", "error", err)
-		// Check if headers were already written
-		if !w.Header().Written() {
+		// Check if headers were already written by checking response code
+		if w.Header().Get(":status") == "" {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		}
 		return
@@ -234,14 +235,21 @@ func main() {
 	}
 	hostPort := fmt.Sprintf("0.0.0.0:%s", port)
 
-	http.HandleFunc("/", upHandler)
-	http.HandleFunc("/up/", upHandler)
-	http.HandleFunc("/do/", doHandler)
-	http.HandleFunc("/health", healthHandler)
+	// Initialize cleanup time
+	cleanupAt = time.Now().Add(10 * time.Minute)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", rateLimitMiddleware(upHandler))
+	mux.HandleFunc("/up/", rateLimitMiddleware(upHandler))
+	mux.HandleFunc("/do/", rateLimitMiddleware(doHandler))
+	mux.HandleFunc("/health", healthHandler) // health check without rate limiting
 
 	server := &http.Server{
-		Addr:    hostPort,
-		Handler: http.DefaultServeMux,
+		Addr:         hostPort,
+		Handler:      mux,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 
 	// Signal channel for graceful shutdown
@@ -257,31 +265,6 @@ func main() {
 			log.Printf("Server shutdown error: %v", err)
 		}
 	}()
-
-	log.Printf("Starting MultiChecksumWeb on %s", hostPort)
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatal("ListenAndServe: ", err)
-	}
-	log.Printf("Server stopped")
-	// Initialize cleanup time
-	cleanupAt = time.Now().Add(10 * time.Minute)
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", rateLimitMiddleware(upHandler))
-	mux.HandleFunc("/up/", rateLimitMiddleware(upHandler))
-	mux.HandleFunc("/do/", rateLimitMiddleware(doHandler))
-	mux.HandleFunc("/health", healthHandler) // health check without rate limiting
-
-	slog.Info("starting server", "address", hostPort)
-	server := &http.Server{
-		Addr:         hostPort,
-		Handler:      mux,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  120 * time.Second,
-	}
-	slog.Error("server failed", "error", server.ListenAndServe())
-	os.Exit(1)
 
 	log.Printf("Starting MultiChecksumWeb on %s (rate limited to %d req/min per IP)", hostPort, rateLimit)
 	log.Fatal(server.ListenAndServe())
