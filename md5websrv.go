@@ -16,7 +16,7 @@ import (
 	"html"
 	"html/template"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"sync"
@@ -126,7 +126,7 @@ func upHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := templates.ExecuteTemplate(w, "upload.html", nil); err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		log.Printf("Error executing template: %v", err)
+		slog.Error("template execution failed", "handler", "upHandler", "error", err)
 	}
 }
 
@@ -177,8 +177,12 @@ func doHandler(w http.ResponseWriter, r *http.Request) {
 	size, err := io.Copy(mw, mpf)
 	if err != nil {
 		http.Error(w, "Error reading file: "+err.Error(), http.StatusInternalServerError)
+		slog.Error("file read failed", "filename", mpHeader.Filename, "size", size, "error", err)
 		return
 	}
+
+	// Log successful file upload
+	slog.Info("file uploaded", "name", mpHeader.Filename, "size", size, "content_type", mpHeader.Header.Get("Content-Type"))
 
 	// get checksums
 	md5sum := md5.Sum(nil)
@@ -201,7 +205,7 @@ func doHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Execute template
 	if err := templates.ExecuteTemplate(w, "download.html", myFileObj); err != nil {
-		log.Printf("Error executing template: %v", err)
+		slog.Error("template execution failed", "handler", "doHandler", "error", err)
 		// Check if headers were already written
 		if !w.Header().Written() {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -233,6 +237,7 @@ func main() {
 	mux.HandleFunc("/do/", rateLimitMiddleware(doHandler))
 	mux.HandleFunc("/health", healthHandler) // health check without rate limiting
 
+	slog.Info("starting server", "address", hostPort)
 	server := &http.Server{
 		Addr:         hostPort,
 		Handler:      mux,
@@ -240,6 +245,8 @@ func main() {
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
+	slog.Error("server failed", "error", server.ListenAndServe())
+	os.Exit(1)
 
 	log.Printf("Starting MultiChecksumWeb on %s (rate limited to %d req/min per IP)", hostPort, rateLimit)
 	log.Fatal(server.ListenAndServe())
