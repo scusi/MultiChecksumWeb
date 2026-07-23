@@ -7,6 +7,7 @@
 package main
 
 import (
+	"context"
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
@@ -18,6 +19,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
 // define a FileObject
@@ -35,6 +39,7 @@ type file struct {
 // constants and variables:
 const (
 	maxUploadSize = 100 << 20 // 100 MB
+	shutdownTimeout = 5 * time.Second
 )
 
 // Custom template functions
@@ -170,8 +175,28 @@ func main() {
 	http.HandleFunc("/do/", doHandler)
 	http.HandleFunc("/health", healthHandler)
 
+	server := &http.Server{
+		Addr:    hostPort,
+		Handler: http.DefaultServeMux,
+	}
+
+	// Signal channel for graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
+
+	go func() {
+		<-sigChan
+		log.Printf("Shutting down server gracefully...")
+		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
+		if err := server.Shutdown(ctx); err != nil {
+			log.Printf("Server shutdown error: %v", err)
+		}
+	}()
+
 	log.Printf("Starting MultiChecksumWeb on %s", hostPort)
-	if err := http.ListenAndServe(hostPort, nil); err != nil {
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatal("ListenAndServe: ", err)
 	}
+	log.Printf("Server stopped")
 }
