@@ -35,10 +35,14 @@ type file struct {
 // constants and variables:
 const (
 	maxUploadSize = 100 << 20 // 100 MB
-	templateDir   = "/tmpl/"
 )
 
 // Custom template functions
+var templateDir = os.Getenv("TEMPLATE_DIR")
+if templateDir == "" {
+	templateDir = "/tmpl/"
+}
+
 var funcMap = template.FuncMap{
 	"divf": func(a, b float64) float64 {
 		if b == 0 {
