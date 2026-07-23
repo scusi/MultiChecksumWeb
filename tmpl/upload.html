@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MultiChecksum - Datei Pr&uuml;fsummen Generator</title>
+    <title>MultiChecksum - Datei Prüfsummen Generator</title>
     <style>
         :root {
             --primary-color: #3498db;
@@ -237,7 +237,7 @@
 <body>
     <div class="container">
         <h1>MultiChecksum</h1>
-        <p class="subtitle">Ziehen Sie eine Datei hierher oder klicken Sie zum Ausw&auml;hlen</p>
+        <p class="subtitle">Ziehen Sie eine Datei hierher oder klicken Sie zum Auswählen</p>
 
         <form id="uploadForm" action="/do/" method="post" enctype="multipart/form-data">
             <div class="upload-area" id="dropArea">
@@ -257,11 +257,11 @@
                 </div>
                 <div class="progress-text" id="progressText">0%</div>
             </div>
-            <button type="submit" class="btn" id="uploadBtn" disabled>Pr&uuml;fsummen berechnen</button>
+            <button type="submit" class="btn" id="uploadBtn" disabled>Prüfsummen berechnen</button>
         </form>
 
         <div class="features">
-            <h3>Unterst&uuml;tzte Pr&uuml;fsummen</h3>
+            <h3>Unterstützte Prüfsummen</h3>
             <ul>
                 <li>MD5 (128-bit)</li>
                 <li>SHA-1 (160-bit)</li>
@@ -272,7 +272,7 @@
         </div>
 
         <div class="privacy-notice">
-            <strong>Datenschutz:</strong> Hochgeladene Dateien werden nicht gespeichert, nicht auf die Festplatte geschrieben und nach der Berechnung der Pr&uuml;fsummen sofort aus dem Arbeitsspeicher gel&ouml;scht.
+            <strong>Datenschutz:</strong> Hochgeladene Dateien werden nicht gespeichert, nicht auf die Festplatte geschrieben und nach der Berechnung der Prüfsummen sofort aus dem Arbeitsspeicher gelöscht.
         </div>
     </div>
 
@@ -384,8 +384,11 @@
 
             xhr.addEventListener('load', () => {
                 if (xhr.status === 200) {
-                    // Redirect to results page
-                    window.location.href = '/do/?file=' + encodeURIComponent(file.name);
+                    // Success: response contains the results page HTML
+                    // Display response directly without redirect
+                    document.open();
+                    document.write(xhr.responseText);
+                    document.close();
                 } else {
                     alert('Fehler beim Hochladen: ' + xhr.statusText);
                     resetUpload();
