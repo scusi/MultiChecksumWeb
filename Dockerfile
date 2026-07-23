@@ -11,6 +11,7 @@ WORKDIR /app
 
 # Copy source files
 COPY md5websrv.go .
+COPY go.mod .
 COPY tmpl ./tmpl
 
 # Build the application statically
