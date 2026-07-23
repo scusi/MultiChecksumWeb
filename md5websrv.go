@@ -38,7 +38,17 @@ const (
 	templateDir   = "/tmpl/"
 )
 
-var templates = template.Must(template.ParseGlob(templateDir + "*"))
+// Custom template functions
+var funcMap = template.FuncMap{
+	"divf": func(a, b float64) float64 {
+		if b == 0 {
+			return 0
+		}
+		return a / b
+	},
+}
+
+var templates = template.Must(template.New("").Funcs(funcMap).ParseGlob(templateDir + "*"))
 
 // shows the upload form
 func upHandler(w http.ResponseWriter, r *http.Request) {
