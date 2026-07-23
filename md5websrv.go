@@ -122,8 +122,9 @@ func doHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Execute template
 	if err := templates.ExecuteTemplate(w, "download.html", myFileObj); err != nil {
-		http.Error(w, "Error rendering page: "+err.Error(), http.StatusInternalServerError)
 		log.Printf("Error executing template: %v", err)
+		// Don't call http.Error here - headers already sent by ExecuteTemplate
+		return
 	}
 }
 
