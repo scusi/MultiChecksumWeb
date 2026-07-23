@@ -46,6 +46,9 @@ var funcMap = template.FuncMap{
 		}
 		return a / b
 	},
+	"float64": func(v int64) float64 {
+		return float64(v)
+	},
 }
 
 var templates = template.Must(template.New("").Funcs(funcMap).ParseGlob(templateDir + "*"))
