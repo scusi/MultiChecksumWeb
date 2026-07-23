@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pr&uuml;fsummen von {{.Name}} - MultiChecksum</title>
+    <title>Prüfsummen von {{.Name}} - MultiChecksum</title>
     <style>
         :root {
             --primary-color: #3498db;
@@ -248,8 +248,8 @@
 </head>
 <body>
     <div class="container">
-        <h1>Pr&uuml;fsummen von {{.Name}}</h1>
-        <a href="/" class="back-link">↩ Zur&uuml;ck zur Upload-Seite</a>
+        <h1>Prüfsummen von {{.Name}}</h1>
+        <a href="/" class="back-link">↩ Zurück zur Upload-Seite</a>
 
         <div class="file-card">
             <div class="file-info">
@@ -259,45 +259,45 @@
                 <div class="label">Typ:</div>
                 <div class="value">{{.ContentType}}</div>
 
-                <div class="label">Gr&ouml;&szlig;e:</div>
+                <div class="label">Größe:</div>
                 <div class="value">{{.Size}} Bytes ({{printf "%.2f" (divf .Size 1024.0)}} KB / {{printf "%.2f" (divf .Size 1048576.0)}} MB)</div>
             </div>
         </div>
 
         <div class="checksums">
-            <h2>Pr&uuml;fsummen</h2>
+            <h2>Prüfsummen</h2>
             <div class="checksum-grid">
                 <div class="checksum-item">
                     <div class="algorithm">MD5</div>
                     <div class="hash">{{printf "%x" .MD5}}</div>
-                    <button class="copy-btn" onclick="copyToClipboard('{{printf "%x" .MD5}}')">Kopieren</button>
+                    <button class="copy-btn" data-hash="{{printf "%x" .MD5}}">Kopieren</button>
                 </div>
                 <div class="checksum-item">
                     <div class="algorithm">SHA-1</div>
                     <div class="hash">{{printf "%x" .SHA1}}</div>
-                    <button class="copy-btn" onclick="copyToClipboard('{{printf "%x" .SHA1}}')">Kopieren</button>
+                    <button class="copy-btn" data-hash="{{printf "%x" .SHA1}}">Kopieren</button>
                 </div>
                 <div class="checksum-item">
                     <div class="algorithm">SHA-224</div>
                     <div class="hash">{{printf "%x" .SHA224}}</div>
-                    <button class="copy-btn" onclick="copyToClipboard('{{printf "%x" .SHA224}}')">Kopieren</button>
+                    <button class="copy-btn" data-hash="{{printf "%x" .SHA224}}">Kopieren</button>
                 </div>
                 <div class="checksum-item">
                     <div class="algorithm">SHA-256</div>
                     <div class="hash">{{printf "%x" .SHA256}}</div>
-                    <button class="copy-btn" onclick="copyToClipboard('{{printf "%x" .SHA256}}')">Kopieren</button>
+                    <button class="copy-btn" data-hash="{{printf "%x" .SHA256}}">Kopieren</button>
                 </div>
                 <div class="checksum-item">
                     <div class="algorithm">SHA-512</div>
                     <div class="hash">{{printf "%x" .SHA512}}</div>
-                    <button class="copy-btn" onclick="copyToClipboard('{{printf "%x" .SHA512}}')">Kopieren</button>
+                    <button class="copy-btn" data-hash="{{printf "%x" .SHA512}}">Kopieren</button>
                 </div>
             </div>
         </div>
 
         <div class="actions">
             <a href="/" class="btn btn-secondary">Neue Datei hochladen</a>
-            <button class="btn" onclick="downloadAll()">Alle Pr&uuml;fsummen herunterladen</button>
+            <button class="btn" id="downloadAllBtn">Alle Prüfsummen herunterladen</button>
         </div>
 
         <div class="privacy-notice">
@@ -308,6 +308,19 @@
     <div class="toast" id="toast">Kopiert!</div>
 
     <script>
+        // Data to be used in script context - stored as data attributes or objects
+        const fileData = {
+            name: '{{.Name}}',
+            size: {{.Size}},
+            checksums: {
+                md5: '{{printf "%x" .MD5}}',
+                sha1: '{{printf "%x" .SHA1}}',
+                sha224: '{{printf "%x" .SHA224}}',
+                sha256: '{{printf "%x" .SHA256}}',
+                sha512: '{{printf "%x" .SHA512}}'
+            }
+        };
+
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => {
                 showToast('Kopiert!');
@@ -327,26 +340,43 @@
         }
 
         function downloadAll() {
-            const filename = "{{.Name}}";
-            const content = `Prüfsummen für: ${filename}\n` +
-                `Dateigröße: {{.Size}} Bytes\n` +
-                `MD5:    {{printf "%x" .MD5}}\n` +
-                `SHA-1:   {{printf "%x" .SHA1}}\n` +
-                `SHA-224: {{printf "%x" .SHA224}}\n` +
-                `SHA-256: {{printf "%x" .SHA256}}\n` +
-                `SHA-512: {{printf "%x" .SHA512}}\n` +
-                `\nGeneriert mit MultiChecksumWeb`;
+            const content = 
+                'Prüfsummen für: ' + fileData.name + '\n' +
+                'Dateigröße: ' + fileData.size + ' Bytes\n' +
+                'MD5:    ' + fileData.checksums.md5 + '\n' +
+                'SHA-1:   ' + fileData.checksums.sha1 + '\n' +
+                'SHA-224: ' + fileData.checksums.sha224 + '\n' +
+                'SHA-256: ' + fileData.checksums.sha256 + '\n' +
+                'SHA-512: ' + fileData.checksums.sha512 + '\n' +
+                '\nGeneriert mit MultiChecksumWeb';
 
             const blob = new Blob([content], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${filename}_checksums.txt`;
+            a.download = fileData.name + '_checksums.txt';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }
+
+        // Event delegation for copy buttons
+        document.querySelectorAll('.copy-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const hash = this.getAttribute('data-hash');
+                if (hash) {
+                    copyToClipboard(hash);
+                }
+            });
+        });
+
+        // Download all button
+        document.getElementById('downloadAllBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            downloadAll();
+        });
     </script>
 </body>
 </html>
