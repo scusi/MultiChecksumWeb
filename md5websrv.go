@@ -126,7 +126,10 @@ func doHandler(w http.ResponseWriter, r *http.Request) {
 	// Execute template
 	if err := templates.ExecuteTemplate(w, "download.html", myFileObj); err != nil {
 		log.Printf("Error executing template: %v", err)
-		// Don't call http.Error here - headers already sent by ExecuteTemplate
+		// Check if headers were already written
+		if !w.Header().Written() {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
 		return
 	}
 }
