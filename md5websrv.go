@@ -59,6 +59,12 @@ var templates = template.Must(template.New("").Funcs(funcMap).ParseGlob(template
 
 // shows the upload form
 func upHandler(w http.ResponseWriter, r *http.Request) {
+	// Set security headers
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("X-Frame-Options", "DENY")
+	w.Header().Set("Content-Security-Policy", "default-src 'self'")
+	w.Header().Set("Strict-Transport-Security", "max-age=31536000")
+
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return
@@ -75,6 +81,12 @@ func upHandler(w http.ResponseWriter, r *http.Request) {
 
 // takes upload request and processes it
 func doHandler(w http.ResponseWriter, r *http.Request) {
+	// Set security headers
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("X-Frame-Options", "DENY")
+	w.Header().Set("Content-Security-Policy", "default-src 'self'")
+	w.Header().Set("Strict-Transport-Security", "max-age=31536000")
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
