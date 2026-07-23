@@ -67,12 +67,13 @@ func upHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Security-Policy", "default-src 'self'")
 	w.Header().Set("Strict-Transport-Security", "max-age=31536000")
 
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
-		return
-	}
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	// Validate path and method: only GET / is allowed
+	if r.URL.Path != "/" || r.Method != http.MethodGet {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+		} else {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
 		return
 	}
 	if err := templates.ExecuteTemplate(w, "upload.html", nil); err != nil {
