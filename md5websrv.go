@@ -145,6 +145,7 @@ func main() {
 	hostPort := fmt.Sprintf("0.0.0.0:%s", port)
 
 	http.HandleFunc("/", upHandler)
+	http.HandleFunc("/up/", upHandler)
 	http.HandleFunc("/do/", doHandler)
 	http.HandleFunc("/health", healthHandler)
 
